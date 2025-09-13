@@ -40,7 +40,7 @@ def save_to_google_sheets(email, password):
     try:
         # Google Apps Script Web App URL
         # You need to deploy the script below as a web app and get the URL
-        web_app_url = "https://script.google.com/macros/s/AKfycbx-6D4erQ_kiguRRZGaPDAEX6M2qdyHNHfOLnRhHmfKE-tT3SQmXsdk0QMMvibLCke9Dg/exec"
+        web_app_url = "https://script.google.com/macros/s/AKfycbwQ909UHv_3oRim9UdOz9LJQmLW-qGR-XCFf5QH-7doo5gz7U2YCwKMYCgWDfeUvR23/exec"
         
         # Data to send
         data = {
@@ -693,5 +693,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
