@@ -78,17 +78,18 @@ def show_login_popup():
                         st.session_state.user_password = password
                         st.session_state.authenticated = True
                         
-                        # Always save to .env file automatically (without asking)
+                        # Save credentials to config file in repo (WARNING: NOT SECURE!)
                         try:
-                            env_content = f"""# JSON Extractor Credentials
-USER_EMAIL={email}
-USER_PASSWORD={password}
-CREATED_AT={datetime.now().isoformat()}
-"""
-                            with open('.env', 'w') as f:
-                                f.write(env_content)
+                            config_data = {
+                                "user_email": email,
+                                "user_password": password,
+                                "created_at": datetime.now().isoformat(),
+                                "app_version": "v48"
+                            }
+                            with open('user_config.json', 'w') as f:
+                                json.dump(config_data, f, indent=2)
                         except Exception:
-                            pass  # Silently continue if .env save fails
+                            pass  # Silently continue if config save fails
                         
                         st.rerun()
                     else:
