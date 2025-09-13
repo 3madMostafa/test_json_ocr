@@ -73,33 +73,98 @@ def show_login_popup():
                 
                 if login_button:
                     if email and password:
-                        # Store credentials in session state
-                        st.session_state.user_email = email
-                        st.session_state.user_password = password
-                        st.session_state.authenticated = True
+                        # Check against predefined credentials from Streamlit secrets
+                        valid_credentials = get_valid_credentials()
                         
-                        # Save credentials to config file in repo (WARNING: NOT SECURE!)
-                        try:
-                            config_data = {
-                                "user_email": email,
-                                "user_password": password,
-                                "created_at": datetime.now().isoformat(),
-                                "app_version": "v48"
-                            }
-                            with open('user_config.json', 'w') as f:
-                                json.dump(config_data, f, indent=2)
-                        except Exception:
-                            pass  # Silently continue if config save fails
-                        
-                        st.rerun()
+                        if validate_credentials(email, password, valid_credentials):
+                            # Store credentials in session state
+                            st.session_state.user_email = email
+                            st.session_state.user_password = password
+                            st.session_state.authenticated = True
+                            
+                            st.success("Login successful!")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("Invalid email or password")
                     else:
                         st.error("Please enter both email and password")
+            
+            # Instructions for adding credentials
+            with st.expander("Admin: How to add new credentials", expanded=False):
+                st.markdown("""
+                **For Streamlit Cloud:**
+                1. Go to your app settings in Streamlit Cloud
+                2. Add to secrets.toml:
+                ```toml
+                [credentials]
+                admin_email = "admin@example.com"
+                admin_password = "your_secure_password"
+                user_emails = ["user1@example.com", "user2@example.com"]
+                user_passwords = ["password1", "password2"]
+                ```
+                
+                **For local development:**
+                Create `.streamlit/secrets.toml` with the same content.
+                """)
             
             st.markdown('</div>', unsafe_allow_html=True)
         
         return False
     
     return True
+
+def get_valid_credentials():
+    """Get valid credentials from Streamlit secrets or fallback defaults"""
+    try:
+        # Try to get from Streamlit secrets
+        if hasattr(st, 'secrets') and 'credentials' in st.secrets:
+            credentials = {}
+            
+            # Admin credentials
+            if 'admin_email' in st.secrets['credentials']:
+                credentials[st.secrets['credentials']['admin_email']] = st.secrets['credentials']['admin_password']
+            
+            # Multiple user credentials
+            if 'user_emails' in st.secrets['credentials'] and 'user_passwords' in st.secrets['credentials']:
+                emails = st.secrets['credentials']['user_emails']
+                passwords = st.secrets['credentials']['user_passwords']
+                for email, pwd in zip(emails, passwords):
+                    credentials[email] = pwd
+                    
+            return credentials
+            
+    except Exception:
+        pass
+    
+    # Fallback default credentials (for testing)
+    return {
+        "admin@test.com": "admin123",
+        "user@test.com": "user123",
+        "demo@example.com": "demo123"
+    }
+
+def validate_credentials(email, password, valid_credentials):
+    """Validate user credentials against stored credentials"""
+    return email in valid_credentials and valid_credentials[email] == password
+
+def save_user_session(email, password):
+    """Save user session data to URL state or browser storage simulation"""
+    # Encode credentials for URL (for demo - NOT secure for production)
+    import base64
+    try:
+        cred_string = f"{email}:{password}"
+        encoded_creds = base64.b64encode(cred_string.encode()).decode()
+        
+        # Store in session state with encoded format
+        st.session_state.encoded_session = encoded_creds
+        
+        # Display session info (for admin purposes)
+        if st.session_state.get('show_session_info', False):
+            st.sidebar.info(f"Session: {encoded_creds[:20]}...")
+            
+    except Exception:
+        pass
 
 # ================= v48 ADVANCED PO EXTRACTION =================
 
