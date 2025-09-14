@@ -131,7 +131,7 @@ def show_login_popup():
             st.markdown('<div class="login-container">', unsafe_allow_html=True)
             
             st.title("🔐 Login Required")
-            st.markdown("Please enter your credentials to access the JSON Data Extractor")
+            st.markdown("Please enter your credentials to access بوابة الضرائب المصرية")
             
             with st.form("login_form", clear_on_submit=True):
                 email = st.text_input("Email", placeholder="Enter your email address")
@@ -651,6 +651,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
